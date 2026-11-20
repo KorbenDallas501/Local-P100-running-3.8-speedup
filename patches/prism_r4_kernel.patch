@@ -1,0 +1,210 @@
+diff --git a/ggml/src/ggml-cuda/ggml-cuda.cu b/ggml/src/ggml-cuda/ggml-cuda.cu
+index 7536a5d..4975eec 100644
+--- a/ggml/src/ggml-cuda/ggml-cuda.cu
++++ b/ggml/src/ggml-cuda/ggml-cuda.cu
+@@ -4515,7 +4515,9 @@ static bool ggml_cuda_graph_set_enabled(ggml_backend_cuda_context * cuda_ctx, co
+     ggml_cuda_graph * graph = cuda_ctx->cuda_graph(graph_key);
+ 
+     if (graph->graph == nullptr) {
+-        if (ggml_cuda_info().devices[cuda_ctx->device].cc < GGML_CUDA_CC_VOLTA) {
++        const char * pascal_graphs = getenv("GGML_CUDA_PASCAL_GRAPHS");
++        const bool enable_pascal_graphs = pascal_graphs && atoi(pascal_graphs) != 0;
++        if (ggml_cuda_info().devices[cuda_ctx->device].cc < GGML_CUDA_CC_VOLTA && !enable_pascal_graphs) {
+             if (!graph->disable_due_to_gpu_arch) {
+                 GGML_LOG_DEBUG("%s: disabling CUDA graphs due to GPU architecture\n", __func__);
+             }
+diff --git a/ggml/src/ggml-cuda/mmvq.cu b/ggml/src/ggml-cuda/mmvq.cu
+index bf51b61..49cf6a0 100644
+--- a/ggml/src/ggml-cuda/mmvq.cu
++++ b/ggml/src/ggml-cuda/mmvq.cu
+@@ -534,11 +534,11 @@ static constexpr __host__ __device__ int calc_nwarps(ggml_type type, int ncols_d
+     return 1;
+ }
+ 
+-static constexpr __host__ __device__ int calc_rows_per_block(int ncols_dst, int table_id, bool small_k = false, int nwarps = 1) {
++static constexpr __host__ __device__ int calc_rows_per_block(ggml_type type, int ncols_dst, int table_id, bool small_k = false, int nwarps = 1, bool halve_iters = false) {
+     if (table_id == MMVQ_PARAMETERS_GENERIC || table_id == MMVQ_PARAMETERS_GCN || table_id == MMVQ_PARAMETERS_TURING || table_id == MMVQ_PARAMETERS_GB10) {
+         switch (ncols_dst) {
+             case 1:
+-                return small_k ? nwarps : 1;
++                return small_k ? nwarps * ((type == GGML_TYPE_PQ2_0 && table_id == MMVQ_PARAMETERS_GENERIC && halve_iters) ? 2 : 1) : 1;
+             case 2:
+             case 3:
+             case 4:
+@@ -546,7 +546,7 @@ static constexpr __host__ __device__ int calc_rows_per_block(int ncols_dst, int
+             case 6:
+             case 7:
+             case 8:
+-                return 2;
++                return type == GGML_TYPE_PQ2_0 && table_id == MMVQ_PARAMETERS_GENERIC && small_k ? (halve_iters ? 8 : 4) : 2;
+             default:
+                 return 1;
+         }
+@@ -573,7 +573,7 @@ static __global__ void mul_mat_vec_q(
+     constexpr int vdr = get_vdr_mmvq(type);
+     constexpr mmvq_parameter_table_id table_id = get_device_table_id();
+     constexpr int nwarps = calc_nwarps(type, ncols_dst, table_id, small_k, halve_iters);
+-    constexpr int rows_per_cuda_block = calc_rows_per_block(ncols_dst, table_id, small_k, nwarps);
++    constexpr int rows_per_cuda_block = calc_rows_per_block(type, ncols_dst, table_id, small_k, nwarps, halve_iters);
+     constexpr int warp_size = ggml_cuda_get_physical_warp_size();
+ 
+     constexpr vec_dot_q_cuda_t vec_dot_q_cuda = get_vec_dot_q_cuda(type);
+@@ -847,6 +847,42 @@ static __global__ void mul_mat_vec_q(
+     }
+ }
+ 
++template<int B,int RPW,int NW> __global__ void pq2_row_warp(const block_pq2_0*w,const block_q8_1*a,float*y,int M,int K){
++ constexpr int VW=B<=4?4:2;
++ constexpr int qi=ggml_cuda_type_traits<GGML_TYPE_PQ2_0>::qi;
++ constexpr int vdr=get_vdr_mmvq(GGML_TYPE_PQ2_0);
++ constexpr int step=vdr*VW*32/qi;
++ const int row=(blockIdx.x*NW+threadIdx.y)*RPW;
++ if(row>=M)return;
++ float tmp[B][RPW][VW]={};
++ for(int kb=threadIdx.x/(qi/vdr);kb<K/128;kb+=step){
++  #pragma unroll
++  for(int v=0;v<VW;v++){
++   const int kbx=kb+v*32/(qi/vdr);
++   if(kbx<K/128){
++    const int kby=kbx*4, kqs=vdr*(threadIdx.x%(qi/vdr));
++    #pragma unroll
++    for(int j=0;j<B;j++){
++     #pragma unroll
++     for(int r=0;r<RPW;r++){
++      tmp[j][r][v]+=vec_dot_pq2_0_q8_1(w,a+j*(K/32)+kby,(row+r)*(K/128)+kbx,kqs);
++     }
++    }
++   }
++  }
++ }
++ #pragma unroll
++ for(int j=0;j<B;j++){
++  #pragma unroll
++  for(int r=0;r<RPW;r++){
++   #pragma unroll
++   for(int v=1;v<VW;v++)tmp[j][r][0]+=tmp[j][r][v];
++   float result=warp_reduce_sum<32>(tmp[j][r][0]);
++   if(threadIdx.x==r)y[j*M+row+r]=result;
++  }
++ }
++}
++
+ // Dedicated MoE multi-token kernel.
+ // Grid: (ceil(nrows_x / c_rows_per_block), nchannels_dst)
+ // Block: (warp_size, ncols_dst) - each warp handles one token independently.
+@@ -922,7 +958,7 @@ static std::pair<dim3, dim3> calc_launch_params(
+         const int ncols_dst, const int nrows_x, const int nchannels_dst, const int nsamples_or_ntokens,
+         const int warp_size, const mmvq_parameter_table_id table_id, const bool small_k = false, const bool halve_iters = false) {
+     const int nwarps = calc_nwarps(type, ncols_dst, table_id, small_k, halve_iters);
+-    const int rpb = calc_rows_per_block(ncols_dst, table_id, small_k, nwarps);
++    const int rpb = calc_rows_per_block(type, ncols_dst, table_id, small_k, nwarps, halve_iters);
+     const int64_t nblocks = (nrows_x + rpb - 1) / rpb;
+     const dim3 block_nums(nblocks, nchannels_dst, nsamples_or_ntokens);
+     const dim3 block_dims(warp_size, nwarps, 1);
+@@ -1022,6 +1058,9 @@ static void mul_mat_vec_q_switch_ncols_dst(
+     const int     blocks_per_iter_1warp = vdr * warp_size / qi;
+ 
+     const auto should_use_small_k = [&](int c_ncols_dst) {
++        if (cc == GGML_CUDA_CC_PASCAL && type == GGML_TYPE_PQ2_0 && c_ncols_dst == 1 && nrows_x % 4 == 0) {
++            return true;
++        }
+         // When K is small, increase rows_per_block to match nwarps so each warp has more work to do
+         // Trigger when the full thread block covers all K blocks in a single loop iteration and few threads remain idle.
+         const int  nwarps = calc_nwarps(type, c_ncols_dst, table_id);
+@@ -1098,6 +1137,57 @@ static void mul_mat_vec_q_switch_ncols_dst(
+         return;
+     }
+ 
++    if constexpr (type == GGML_TYPE_PQ2_0) {
++        static const bool width_geometry = [] {
++            const char * value = getenv("GGML_CUDA_PQ2_WIDTH_GEOMETRY");
++            return value && atoi(value) != 0;
++        }();
++        if (width_geometry && cc == GGML_CUDA_CC_PASCAL && !has_ids && ncols_dst == 4 &&
++                nrows_x >= 4096 && nrows_x % 8 == 0 && nchannels_dst == 1 && nsamples_dst == 1 &&
++                stride_row_x == ncols_x / QK_PQ2_0 && stride_col_y == ncols_x / QK8_1 && stride_col_dst == nrows_x &&
++                (ncols_x == 5120 || ncols_x == 6144 || ncols_x == 17408)) {
++            GGML_ASSERT(!fusion.gate && !fusion.x_bias && !fusion.gate_bias && !fusion.x_scale && !fusion.gate_scale);
++            const dim3 grid(nrows_x / 8, 1, 1);
++            const dim3 block(warp_size, 4, 1);
++            const ggml_cuda_kernel_launch_params launch_params(grid, block, 0, stream);
++            if (ncols_x == 17408) {
++                ggml_cuda_kernel_launch(mul_mat_vec_q<type, 4, false, false, true, true>, launch_params,
++                    vx, vy, ids, fusion, dst, ncols_x, nchannels_y_fd, stride_row_x, stride_col_y, stride_col_dst,
++                    channel_ratio_fd, stride_channel_x, stride_channel_y, stride_channel_dst,
++                    sample_ratio_fd, stride_sample_x, stride_sample_y, stride_sample_dst, ids_stride);
++            } else {
++                ggml_cuda_kernel_launch(pq2_row_warp<4, 2, 4>, launch_params,
++                    (const block_pq2_0 *) vx, (const block_q8_1 *) vy, dst, (int) nrows_x, (int) ncols_x);
++            }
++            return;
++        }
++        static const bool verify_r4 = [] {
++            const char * value = getenv("GGML_CUDA_PQ2_VERIFY_R4");
++            return !value || atoi(value) != 0;
++        }();
++        if (cc == GGML_CUDA_CC_PASCAL && verify_r4 && nrows_x >= 4096 && nrows_x % 4 == 0 &&
++                ncols_dst > 1 && ncols_dst != 4) {
++            const auto launch = [&](auto width) {
++                constexpr int B = decltype(width)::value;
++                const auto dims = calc_launch_params<type>(B, nrows_x, nchannels_dst, nsamples_dst, warp_size, table_id, true);
++                mul_mat_vec_q_switch_fusion<type, B, true>(vx, vy, ids, fusion, dst, ncols_x, nchannels_y_fd,
++                    stride_row_x, stride_col_y, stride_col_dst, channel_ratio_fd, stride_channel_x, stride_channel_y,
++                    stride_channel_dst, sample_ratio_fd, stride_sample_x, stride_sample_y, stride_sample_dst,
++                    dims.first, dims.second, 0, ids_stride, stream);
++            };
++            switch (ncols_dst) {
++                case 2: launch(std::integral_constant<int, 2>{}); break;
++                case 3: launch(std::integral_constant<int, 3>{}); break;
++                case 5: launch(std::integral_constant<int, 5>{}); break;
++                case 6: launch(std::integral_constant<int, 6>{}); break;
++                case 7: launch(std::integral_constant<int, 7>{}); break;
++                case 8: launch(std::integral_constant<int, 8>{}); break;
++                default: GGML_ABORT("invalid PQ2 verification width");
++            }
++            return;
++        }
++    }
++
+     switch (ncols_dst) {
+         case 1: {
+             // static, else MSVC lambda capture breaks the constexpr uses below
+@@ -1122,7 +1212,17 @@ static void mul_mat_vec_q_switch_ncols_dst(
+                     stream);
+             };
+ 
+-            if (should_use_small_k(c_ncols_dst)) {
++            static const int pq2_rows = [] {
++                const char * value = getenv("GGML_CUDA_PQ2_ROWS");
++                if (value && strcmp(value, "selective8") == 0) {
++                    return -8;
++                }
++                return value ? atoi(value) : 4;
++            }();
++            const bool pq2_rows8 = pq2_rows == 8 || (pq2_rows == -8 && ncols_x == 5120 && nrows_x >= 10240);
++            if (type == GGML_TYPE_PQ2_0 && cc == GGML_CUDA_CC_PASCAL && pq2_rows8 && nrows_x % 8 == 0) {
++                launch(std::true_type{}, std::true_type{});
++            } else if (should_use_small_k(c_ncols_dst)) {
+                 launch(std::true_type{},  std::false_type{});
+             } else if (should_halve_iters()) {
+                 launch(std::false_type{}, std::true_type{});
+diff --git a/src/models/qwen35.cpp b/src/models/qwen35.cpp
+index c5f816e..a0faf96 100644
+--- a/src/models/qwen35.cpp
++++ b/src/models/qwen35.cpp
+@@ -634,6 +634,15 @@ llama_model_qwen35::graph_mtp::graph_mtp(const llama_model & model, const llm_gr
+         ggml_tensor * tok_embd_w = layer.nextn.embed_tokens ? layer.nextn.embed_tokens : model.tok_embd;
+ 
+         tok_embd = ggml_get_rows(ctx0, tok_embd_w, inp->tokens);
++        if (hadamard_inverses) {
++            const auto it = hadamard_inverses->find(tok_embd_w);
++            if (it != hadamard_inverses->end()) {
++                tok_embd = llama_mul_mat_hadamard(ctx0, tok_embd, it->second.rot);
++                if (it->second.signs) {
++                    tok_embd = ggml_mul(ctx0, tok_embd, it->second.signs);
++                }
++            }
++        }
+     } else {
+         tok_embd = inp->embd;
+     }

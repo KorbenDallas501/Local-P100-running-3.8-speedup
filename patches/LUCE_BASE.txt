@@ -1,0 +1,56 @@
+Base for luce_mtp.patch (plain git diff, 26 commits squashed)
+Upstreams (both MIT):
+  https://github.com/Luce-Org/llama.cpp-dflash-ggml   branch luce-dflash  @ 570d9785e39cf398ebc585ce9c65b5ea37c330c0
+  https://github.com/TheTom/llama-cpp-turboquant      branch feature/turboquant-kv-cache @ 73eb521daebc85da7c91d37178940b99a5524cf6
+The patch applies on top of a local merge of those two commits (luce-dflash first, then turboquant merged in):
+  git checkout 570d9785e39cf398ebc585ce9c65b5ea37c330c0
+  git merge 73eb521daebc85da7c91d37178940b99a5524cf6   # resolve conflicts; MERGE_NOTES.md in the patch documents them
+  git apply luce_mtp.patch
+The first commit in the patch adapts laguna to the new build_attn and wires the TQ3_0 graph rotation into libllama.
+Exact conflict resolutions of the original merge are not reproducible from public commits; expect small fix-ups.
+
+Commit subjects (oldest first):
+- Post-merge: adapt laguna to new build_attn; wire TQ3_0 graph rotation contract into libllama
+- CUDA: don't take the TQ4_1S dp4a path on sm_60
+- CUDA: add GGML_CUDA_NO_DP4A to force the scalar dp4a fallback for benchmarking
+- scripts: GGUF tensor-type dump and dp4a-penalty bench
+- MTP: optional trailing-window cap on the draft KV (LUCE_MTP_WINDOW)
+- MTP: optional LUCE_MTP_PROBE trace of draft confidence
+- CUDA: optional LUCE_CUDA_GRAPHS=1 to lift the pre-Ampere graph gate
+- quantize: honour --tensor-type under the COPY ftype (surgical requant)
+- test-backend-ops: GGML_PERF_MIN_US to shorten the perf accumulation window
+- scripts: GP100 fp16-vs-int8 mat-vec probe (result: naive half2 loses)
+- cuda: Pascal-specific mmvq rows_per_block + GDN perf cases + graph counters
+- cuda: LUCE_OP_PROFILE per-op GPU time attribution
+- cuda: LUCE_OP_PROFILE_EVERY, and fix the fp16 probe's clock-ramp bug
+- cuda: print LUCE_OP_PROFILE to stderr, not GGML_LOG_INFO
+- cuda: bucket LUCE_OP_PROFILE MUL_MAT by src0 row count too
+- cuda: thread type into calc_rows_per_block, add LUCE_PASCAL_RPB_N2 knob
+- cuda: rows_per_block 4 at ncols_dst==2 for iq4_xs on Pascal (-5.7%)
+- cuda: extend n=2 rows_per_block=4 to iq3_s, q5_K and q4_K on Pascal
+- MTP: size the draft-KV reserve to n_ubatch, not a fixed 64
+- cuda: compile-time RPB constants for iq2_s and q6_K at ncols_dst==2
+- mmvq: tune rows_per_block for ncols_dst 3..8 on Pascal (default 2 = no-op)
+- mmvq: split sub-4-bit types onto their own rows_per_block knob (Pascal n=3..8)
+- cuda: knob to carve sm_60 out of the FP16 fast path (upstream issue #25593)
+- cuda: ship rows_per_block 4 for q4_1 et al at ncols_dst 3..8 on Pascal
+- cuda: LUCE_PHASE per-op wall-clock breakdown (env-gated, default off)
+- qwen35: E7 whole-block skip, now runtime-settable via LUCE_SKIP_FILE
+
+Diffstat:
+ MERGE_NOTES.md                  |  89 ++++++++++++++++++
+ common/speculative.cpp          |  88 ++++++++++++++++++
+ ggml/src/ggml-cuda/common.cuh   |  32 ++++++-
+ ggml/src/ggml-cuda/ggml-cuda.cu | 199 +++++++++++++++++++++++++++++++++++++++-
+ ggml/src/ggml-cuda/mmvq-tq.cu   |  11 ++-
+ ggml/src/ggml-cuda/mmvq.cu      | 124 ++++++++++++++++++++++++-
+ scripts/bench_dp4a_penalty.sh   |  22 +++++
+ scripts/gguf_tensor_types.py    |  87 ++++++++++++++++++
+ scripts/p100_fp16_probe.cu      | 136 +++++++++++++++++++++++++++
+ src/llama-graph.cpp             |  37 ++++++++
+ src/llama-quant.cpp             |  29 +++++-
+ src/models/laguna.cpp           |   2 +-
+ src/models/qwen35.cpp           |  64 +++++++++++++
+ tests/test-backend-ops.cpp      |  24 ++++-
+ tools/server/server-context.cpp |  16 ++++
+ 15 files changed, 946 insertions(+), 14 deletions(-)

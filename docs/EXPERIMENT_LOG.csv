@@ -1,0 +1,75 @@
+experiment_id,datetime,git_commit,model_quant,workload,prompt_tokens,gen_tokens,mtp_B,draft_impl,t_per_s,ms_per_token,gen_drafts,acc_drafts,acceptance,tau,ms_round,draft_ms_round,prefill_t_per_s,start_temp_C,peak_temp_C,status,notes
+F52-nospec,2026-09-02T18:00,86563ef93,Ridge-3.7bpw,prose,15,96,1,none,11.27,88.71,0,0,,1.000,88.71,0,9.12,,,VALID,T(B) scan baseline
+F52-B2,2026-09-02T18:00,86563ef93,Ridge-3.7bpw,prose,15,96,2,draft-mtp,13.64,73.29,53,41,0.7736,1.811,132.76,,13.56,,,VALID,
+F52-B4,2026-09-02T18:00,86563ef93,Ridge-3.7bpw,prose,15,96,4,draft-mtp,12.59,79.41,108,59,0.5463,2.667,211.77,,13.37,,,VALID,
+F52-B8,2026-09-02T18:00,86563ef93,Ridge-3.7bpw,prose,15,96,8,draft-mtp,9.96,100.38,176,68,0.3864,3.818,383.20,,13.18,,,VALID,worse than no-spec
+F55-q41-nospec,2026-09-02T18:15,86563ef93,q41nonffn,prose,15,96,1,none,12.33,81.10,0,0,,1.000,81.10,0,6.81,71,,VALID,thermally suppressed
+F55-q41-B2,2026-09-02T18:20,86563ef93,q41nonffn,prose,15,96,2,draft-mtp,15.27,65.49,55,40,0.7273,1.745,114.32,,13.85,72,,VALID,superseded by F57
+F57-q41-B2,2026-09-02T19:37,86563ef93,q41nonffn,prose,15,96,2,draft-mtp,16.10,62.10,55,40,0.7273,1.746,108.40,,,36,52,VALID,identical acceptance to F55 => +5.4% thermal
+F57-q41-B3,2026-09-02T19:38,86563ef93,q41nonffn,prose,15,96,3,draft-mtp,16.46,60.74,84,53,0.6310,2.286,138.83,,,49,55,VALID,
+F57-q41-B4,2026-09-02T19:40,86563ef93,q41nonffn,prose,15,96,4,draft-mtp,16.63,60.14,99,61,0.6162,2.909,174.95,,,51,57,VALID,prose peak
+F60-q41-B5,2026-09-02T19:53,86563ef93,q41nonffn,prose,15,96,5,draft-mtp,14.22,70.30,139,60,0.4317,2.743,192.83,,,63,70,VALID,tok/round FELL
+F60-q41-B6,2026-09-02T19:56,86563ef93,q41nonffn,prose,15,96,6,draft-mtp,12.74,78.52,167,61,0.3653,2.909,228.43,,,65,72,VALID,
+F60-q41-B8,2026-09-02T20:00,86563ef93,q41nonffn,prose,15,96,8,draft-mtp,9.89,101.08,222,62,0.2793,3.000,303.24,,,67,75,VALID,
+F62-q41-B4-hot,2026-09-02T20:12,86563ef93,q41nonffn,prose,15,96,4,draft-mtp,15.93,62.76,99,61,0.6162,2.909,,,13.71,70,77,VALID,bracket: 4.2% thermal vs 16.63
+F59-KV1,2026-09-02T19:44,86563ef93,Ridge-3.7bpw,prose,15,96,2,draft-mtp,14.51,68.92,51,43,0.8431,1.882,129.73,,,52,63,VALID,TURBO_AUTO_ASYMMETRIC=0
+F59-KV3,2026-09-02T19:50,86563ef93,Ridge-3.7bpw,prose,15,96,2,draft-mtp,13.89,72.01,53,41,0.7736,1.811,130.43,,13.59,61,,VALID,ASYM default ctx32768
+F66-MTP-B4-ref,2026-09-02T21:03,86563ef93,q41nonffn,prose,15,96,4,draft-mtp,17.77,56.26,99,61,0.6162,2.909,163.66,11.68,8.55,42,57,VALID,PROSE CHAMPION cold start
+F64-mapk,2026-09-02T21:06,86563ef93,q41nonffn,prose,15,96,4,ngram-map-k,14.04,71.21,0,0,,1.000,,0.05,14.89,54,60,VALID,ZERO drafts - empty index
+F64-mapk4v,2026-09-02T21:08,86563ef93,q41nonffn,prose,15,96,4,ngram-map-k4v,14.02,71.34,0,0,,1.000,,0.06,14.84,56,63,VALID,ZERO drafts
+F64-mod,2026-09-02T21:10,86563ef93,q41nonffn,prose,15,96,4,ngram-mod,13.94,71.74,0,0,,1.000,,0.11,14.91,58,65,VALID,ZERO drafts n_match=24
+F64-cache,2026-09-02T21:12,86563ef93,q41nonffn,prose,15,96,4,ngram-cache,13.86,72.13,0,0,,1.000,,0.28,14.80,60,67,VALID,ZERO drafts no cachefile
+F64-mapk-n6,2026-09-02T21:14,86563ef93,q41nonffn,prose,15,96,4,ngram-map-k,13.78,72.59,0,0,,1.000,,0.06,14.79,62,69,VALID,size_n=6 ZERO drafts
+F64-mapk-n4,2026-09-02T21:16,86563ef93,q41nonffn,prose,15,96,4,ngram-map-k,13.73,72.83,0,0,,1.000,,0.07,14.79,64,71,VALID,size_n=4 ZERO drafts
+F64-mapk-n3,2026-09-02T21:18,86563ef93,q41nonffn,prose,15,96,4,ngram-map-k,13.64,73.31,0,0,,1.000,,0.08,14.81,66,73,VALID,size_n=3 ZERO drafts
+F67-echo-long-B4,2026-09-02T21:26,86563ef93,q41nonffn,echo-2166,2166,96,4,draft-mtp,22.18,45.09,72,70,0.9722,4.000,180.35,11.83,121.22,67,78,VALID,tau=ARITHMETIC MAX for B4
+F67-echo-long-nospec,2026-09-02T21:29,86563ef93,q41nonffn,echo-2166,2166,96,1,none,,,,,,,,,,69,80,VOID,80C guard aborted request
+S1-echo-short-B4,2026-09-02T21:37,86563ef93,q41nonffn,echo-682,682,96,4,draft-mtp,22.94,43.59,72,70,0.9722,4.000,174.37,11.68,106.93,71,78,VALID,BEST MEASURED; acceptance identical to long echo
+S2-echo-short-nospec,2026-09-02T21:40,86563ef93,q41nonffn,echo-682,682,96,1,none,,,,,,,,,,72,80,VOID,80C guard aborted
+S3-echo-short-mapk,2026-09-02T21:44,86563ef93,q41nonffn,echo-682,682,96,4,ngram-map-k,,,,,,,,,,71,80,VOID,80C guard aborted; no statistics line survived
+R1-echo-B4-cold,2026-09-02T22:20,7ce983d8e,q41nonffn,echo-682,682,96,4,draft-mtp,23.70,42.19,72,70,0.9722,4.000,168.75,11.28,99.41,39,56,VALID,cold bracket of S1: +3.3% at identical acceptance
+R2-echo-B6,2026-09-02T22:25,7ce983d8e,q41nonffn,echo-682,682,96,6,draft-mtp,27.73,36.07,82,78,0.9512,5.647,203.67,18.99,109.54,52,60,VALID,PEAK; beat 24.6 projection; m=17.46 over B4-B6
+R3-echo-B8,2026-09-02T22:30,7ce983d8e,q41nonffn,echo-682,682,96,8,draft-mtp,26.29,38.04,90,82,0.9111,7.385,280.94,26.52,108.36,56,63,VALID,DECLINE; m=38.64 over B6-B8 => cost convex
+R4-echo-B12,2026-09-02T22:35,7ce983d8e,q41nonffn,echo-682,682,96,12,draft-mtp,,,,,,,,,111.12,59,64,VOID,CUDA error at ggml-cuda.cu:107 during decode; peak only 64C so NOT thermal; ready VRAM 14787 MiB + 2x151MiB checkpoints = probable OOM at 16GB; B<=8 is the measurable range
+R5-echo-B4-close,2026-09-02T22:40,7ce983d8e,q41nonffn,echo-682,682,96,4,draft-mtp,23.52,42.51,72,70,0.9722,4.000,170.05,11.51,108.44,60,68,VALID,CLOSING BRACKET: -0.76% vs R1 opening => wide-B block thermally stable; B=6 peak is real
+P1-echo-B6-rep1,2026-09-02T22:31,7ce983d8e,q41nonffn,echo-682,682,96,6,draft-mtp,27.14,36.85,82,78,0.9512,5.647,208.08,19.27,108.29,63,66,VALID,REPRODUCES R2: acceptance bit-identical; -2.1% explained by 11C hotter start
+P2-echo-B5,2026-09-02T22:41,7ce983d8e,q41nonffn,echo-682,682,96,5,draft-mtp,26.21,38.15,78,75,0.9615,4.800,183.14,15.65,107.35,68,75,VALID,normalised to 63C ~26.50 => B=6 still wins by ~2.4%
+P3-echo-B7,2026-09-02T22:50,7ce983d8e,q41nonffn,echo-682,682,96,7,draft-mtp,,,,,,,,,,,,VOID,CONTAMINATED: batch12 ngram_probe ran concurrently and tears down servers on port 8097; discarded and re-run as Y1
+Y1-echo-B7,2026-09-02T22:57,7ce983d8e,q41nonffn,echo-682,682,96,7,draft-mtp,26.89,37.18,87,80,0.9195,6.400,237.97,22.87,99.11,42,58,VALID,ran 10C COLDER than B=6 and still lost => peak at B=6 confirmed without normalisation
+Y2-echo-B6-brk,2026-09-02T23:01,7ce983d8e,q41nonffn,echo-682,682,96,6,draft-mtp,27.70,36.10,82,78,0.9512,5.647,203.88,19.06,109.25,54,61,VALID,third B=6 measurement
+K1-echo-B6-ctl,2026-09-02T23:45,7ce983d8e,q41nonffn,echo-682,682,96,6,draft-mtp,27.74,36.05,82,78,0.9512,5.647,203.56,19.05,99.53,42,58,VALID,CONTROL arm rpbn4_2 = verified no-op vs HEAD; reproduces champion
+K2-echo-B6-cnd,2026-09-02T23:50,7ce983d8e,q41nonffn,echo-682,682,96,6,draft-mtp,28.94,34.55,82,78,0.9512,5.647,195.13,18.67,109.07,55,62,VALID,CANDIDATE arm rpbn4_4: +4.3% raw / ~+7.2% thermally matched; NEW CHAMPION; acceptance bit-identical
+K3-echo-B8-ctl,2026-09-02T23:53,7ce983d8e,q41nonffn,echo-682,682,96,8,draft-mtp,26.02,38.43,90,82,0.9111,7.385,283.76,26.70,108.28,58,65,VALID,control arm; consistent with earlier B=8 26.29
+K4-echo-B8-cnd,2026-09-02T23:56,7ce983d8e,q41nonffn,echo-682,682,96,8,draft-mtp,27.92,35.81,90,82,0.9111,7.385,264.47,26.19,108.29,61,68,VALID,candidate +7.3% raw / ~+8.0% matched; normalised to 55C = 28.29 so B=6 still optimal
+L1-prose-B4-ctl-open,2026-09-03T00:05,7ce983d8e,q41nonffn,prose,15,96,4,draft-mtp,17.79,56.20,99,61,0.61616,,,,14.37,39,55,OK,batch17 Q1 opening bracket; arm rpbn4_2
+L2-prose-B5-ctl,2026-09-03T00:11,7ce983d8e,q41nonffn,prose,15,96,5,draft-mtp,15.55,64.32,139,60,0.43165,,,,,52,59,OK,batch17 Q2; arm rpbn4_2
+L3-prose-B6-ctl,2026-09-03T00:17,7ce983d8e,q41nonffn,prose,15,96,6,draft-mtp,13.85,72.20,167,61,0.36527,,,,,55,62,OK,batch17 Q3; arm rpbn4_2
+L4-prose-B4-ctl-close,2026-09-03T00:23,7ce983d8e,q41nonffn,prose,15,96,4,draft-mtp,17.51,57.12,99,61,0.61616,,,,14.37,58,64,OK,batch17 Q4 closing bracket; -1.6% drift vs L1
+L5-echo-B6-cnd-cold,2026-09-03T00:30,7ce983d8e,q41nonffn,echo-682,682,96,6,draft-mtp,29.37,34.04,82,78,0.95122,,,,,39,55,OK,batch18 R1; COLD REPRODUCTION of K2 28.94; acceptance bit-identical; champion CONFIRMED
+L6-prose-B4-cnd,2026-09-03T00:36,7ce983d8e,q41nonffn,prose,15,96,4,draft-mtp,17.84,56.06,99,61,0.61616,,,,,51,58,OK,batch18 R2; arm rpbn4_4; +1.1% vs control mean = within drift
+L7-prose-B5-cnd,2026-09-03T00:42,7ce983d8e,q41nonffn,prose,15,96,5,draft-mtp,13.10,76.35,139,60,0.43165,,,,,54,61,OK,batch18 R3; arm rpbn4_4; -15.8% vs L2 REGRESSION - confirms micro iq2_s n=5 prediction end-to-end
+L8-prose-B6-cnd,2026-09-03T00:48,7ce983d8e,q41nonffn,prose,15,96,6,draft-mtp,14.35,69.69,167,61,0.36527,,,,,57,64,OK,batch18 R4; arm rpbn4_4; +3.6% vs L3
+M1-echo-B6-sub44,2026-09-03T01:10,c4252088f,q41nonffn,echo-682,682,96,6,draft-mtp,29.40,34.02,82,78,0.95122,5.647,,,,38,55,OK,batch19 P1; arm sub4_4; reproduces 29.37 champion within 0.1% on refactored source
+M2-echo-B6-sub42,2026-09-03T01:16,c4252088f,q41nonffn,echo-682,682,96,6,draft-mtp,28.42,35.18,82,78,0.95122,5.647,,,,50,59,OK,batch19 P2; arm sub4_2; temp-matched 29.17 => iq2_s@4 worth only +0.8%
+M3-prose-B5-sub44,2026-09-03T01:22,c4252088f,q41nonffn,prose,15,96,5,draft-mtp,13.08,76.46,139,60,0.43165,,,,,54,61,OK,batch19 P3; arm sub4_4; regression control
+M4-prose-B5-sub42,2026-09-03T01:28,c4252088f,q41nonffn,prose,15,96,5,draft-mtp,15.85,63.09,139,60,0.43165,,,,,57,64,OK,batch19 P4; arm sub4_2; REGRESSION VANISHES +21.2% raw while 3C hotter; beats all-2 control 15.55
+M5-prose-B6-sub44,2026-09-03T01:34,c4252088f,q41nonffn,prose,15,96,6,draft-mtp,14.28,70.05,167,61,0.36527,,,,,59,66,OK,batch19 P5; arm sub4_4
+M6-prose-B6-sub42,2026-09-03T01:40,c4252088f,q41nonffn,prose,15,96,6,draft-mtp,14.01,71.39,167,61,0.36527,,,,,61,68,OK,batch19 P6; arm sub4_2; temp-matched => iq2_s@4 worth +1.5%
+N1-gsm8k-B4,2026-09-03T05:15,c4252088f,q41nonffn,gsm8k,~45,96,4,draft-mtp,20.58,48.59,87,66,0.75862,3.276,,,,39,,OK,batch20 G1; arm sub4_4
+N2-prose-B4-ctl,2026-09-03T05:22,c4252088f,q41nonffn,prose,15,96,4,draft-mtp,17.84,56.06,99,61,0.61616,2.848,,,,50,,OK,batch20 G2; reproduces prose champion 3rd time
+N3-gsm8k-B6,2026-09-03T05:29,c4252088f,q41nonffn,gsm8k,~45,96,6,draft-mtp,20.16,49.60,120,70,0.58333,3.917,,,,53,,OK,batch20 G3
+N4-gsm8k-B8,2026-09-03T05:35,c4252088f,q41nonffn,gsm8k,~45,96,8,draft-mtp,18.84,53.07,134,75,0.55970,4.918,,,,56,,OK,batch20 G4; tau within 2.0% of published 5.02 at matched B
+N5-gsm8k-B4-brk,2026-09-03T05:41,c4252088f,q41nonffn,gsm8k,~45,96,4,draft-mtp,20.56,48.65,87,66,0.75862,3.276,,,,58,,OK,batch20 G5 bracket; -0.1% drift vs G1
+VOID-batch21-D1toD7,2026-09-03T05:57,67a17c17c,q41nonffn,prose+gsm8k,,,4/8,draft-mtp+draft-dflash,,,,,,,,,,38,62,VOID,libmtmd.so.0 missing from payload; server never started; 7 points 600s timeout each; no data
+P1-echo-B6-ctl,2026-09-03T07:33,c2fba60ba,q41nonffn,echo-682,682,96,6,draft-mtp,28.53,35.05,82,78,0.95122,5.647,,,,41,58,OK,batch22 E1 open bracket; arm sub4_2
+P2-echo-B6-fp16fix,2026-09-03T07:39,c2fba60ba+fp16,q41nonffn,echo-682,682,96,6,draft-mtp,28.46,35.13,82,78,0.95122,5.647,,,,54,63,OK,batch22 E2; +1.6% vs control interpolated to 54C; acceptance bit-identical
+P3-prose-B4-ctl,2026-09-03T07:45,c2fba60ba,q41nonffn,prose,15,96,4,draft-mtp,17.89,55.91,99,61,0.61616,2.848,,,,58,65,OK,batch22 E3
+P4-prose-B4-fp16fix,2026-09-03T07:51,c2fba60ba+fp16,q41nonffn,prose,15,96,4,draft-mtp,16.79,59.57,105,59,0.56190,2.686,,,,60,67,OK,batch22 E4; acceptance CHANGED - not attributable from one sample
+P5-echo-B6-ctl-brk,2026-09-03T07:57,c2fba60ba,q41nonffn,echo-682,682,96,6,draft-mtp,27.69,36.11,82,78,0.95122,5.647,,,,62,70,OK,batch22 E5 closing bracket; -2.9% drift over 21C => slope -0.0400 t/s/C
+Q1-prose-B4-mtp-master,2026-09-03T03:25,67a17c17c,q41nonffn,prose,15,96,4,draft-mtp,18.88,52.96,102,61,0.59804,2.79,147.8,,,42,57,OK,batch24 D1; upstream master q8_0 KV no Pascal table; FASTER than our fork
+Q2-prose-B4-dflash2,2026-09-03T03:31,67a17c17c,q41nonffn,prose,15,96,4,draft-dflash,16.88,59.25,104,60,0.57692,2.71,160.5,,,54,61,OK,batch24 D2; drafter +1200MiB VRAM; tau NO better than MTP
+Q3-prose-B8-mtp-master,2026-09-03T03:37,67a17c17c,q41nonffn,prose,15,96,8,draft-mtp,12.78,78.24,186,66,0.35484,3.36,262.9,,,58,65,OK,batch24 D3
+Q4-prose-B8-dflash2,2026-09-03T03:43,67a17c17c,q41nonffn,prose,15,96,8,draft-dflash,9.89,101.13,243,59,0.24280,2.64,266.9,,,62,70,OK,batch24 D4; tau -21.4% vs MTP
+Q5-gsm8k-B8-mtp-master,2026-09-03T03:49,67a17c17c,q41nonffn,gsm8k,~45,96,8,draft-mtp,20.45,48.89,114,77,0.67544,5.53,270.4,,,64,71,OK,batch24 D5
+Q6-gsm8k-B8-dflash2,2026-09-03T03:55,67a17c17c,q41nonffn,gsm8k,~45,96,8,draft-dflash,24.26,41.22,98,81,0.82653,6.79,279.9,,,67,73,OK,batch24 D6; DFLASH2 WINS +18.6% t/s tau 6.79 vs 5.53
+Q7-prose-B4-mtp-brk,2026-09-03T04:01,67a17c17c,q41nonffn,prose,15,96,4,draft-mtp,18.18,55.00,102,61,0.59804,2.79,153.5,,,68,74,OK,batch24 D7 bracket; -3.7% drift over 26C
